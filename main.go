@@ -37,7 +37,15 @@ func (h *SlackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text := strings.Replace(q.Get("text"), q.Get("trigger_word"), "", 1)
+	var text string
+	t := q.Get("text")
+	if strings.Contains(t, "jest fajny") {
+		text = "No raczej!"
+	} else if strings.Contains(t, "jest głupi") {
+		text = "Chyba ty"
+	} else {
+		text := strings.Replace(q.Get("text"), q.Get("trigger_word"), "", 1)
+	}
 	sr := SlackResponse{Text: fmt.Sprintf("Text sent: %s by user %s", text, q.Get("user_name"))}
 
 	w.Header().Set("Content-Type", "application/json")
