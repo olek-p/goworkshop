@@ -43,7 +43,7 @@ func (h *SlackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text := strings.Replace(strings.Replace(q.Get("text"), "@"+q.Get("user_name"), "", 1), "googlebot: ", "", 1)
+	text := strings.Replace(strings.Replace(q.Get("text"), "<@"+q.Get("user_id")+">", "", 1), "googlebot: ", "", 1)
 	var respText string
 	if text == "" {
 		respText = "Y U so quiet?"
