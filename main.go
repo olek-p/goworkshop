@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,6 +19,11 @@ type (
 	}
 	// SlackHandler is a request handler
 	SlackHandler struct {
+	}
+
+	SynoResponse struct {
+		Word     string   `json:"word"`
+		Synonyms []string `json:"synonyms"`
 	}
 )
 
@@ -37,19 +43,47 @@ func (h *SlackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var text string
-	t := q.Get("text")
-	if strings.Contains(t, "jest fajny") {
-		text = "No raczej!"
-	} else if strings.Contains(t, "jest głupi") {
-		text = "Chyba ty"
+	text := strings.Replace(strings.Replace(q.Get("text"), q.Get("user_name"), "", 1), "googlebot: ", "", 1)
+	var respText string
+	if text == "" {
+		respText = "Y U so quiet?"
 	} else {
-		text = strings.Replace(q.Get("text"), q.Get("trigger_word"), "", 1)
+		words := strings.Split(text, " ")
+		var synonyms []string
+		for _, word := range words {
+			if synonym, err := h.GetSynonim(word); err != nil {
+				log.Printf("Failed to get synonym for %s (%s)\n", word, err.Error())
+			} else {
+				synonyms = append(synonyms, synonym)
+			}
+		}
+		respText = "So you're saying that " + strings.Join(synonyms, " ")
 	}
-	sr := SlackResponse{Text: fmt.Sprintf("Text sent: %s by user %s", text, q.Get("user_name"))}
+	sr := SlackResponse{Text: respText}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(sr)
+}
+
+func (h *SlackHandler) GetSynonim(word string) (string, error) {
+	r, err := http.Get("http://workshop.x7467.com:1080/" + word)
+	defer r.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	if r.StatusCode == http.StatusNotFound {
+		return "[" + word + "]", nil
+	}
+
+	s := &SynoResponse{}
+	var buf bytes.Buffer
+	buf.ReadFrom(r.Body)
+	if err := json.Unmarshal(buf.Bytes(), s); err != nil {
+		return "", err
+	}
+
+	return s.Synonyms[rand.Intn(len(s.Synonyms))], nil
 }
 
 func main() {
